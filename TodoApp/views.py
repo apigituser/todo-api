@@ -1,11 +1,26 @@
 from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.models import User
-from django.http import JsonResponse, HttpRequest
 from django.views.decorators.csrf import csrf_exempt
+from rest_framework.authtoken.models import Token
+from django.contrib.auth.models import User
+from django.http import JsonResponse
 import json
 
 @csrf_exempt
+def obtainToken(request):
+    username = request.POST.get('username')
+    password = request.POST.get('password')
+    
+    user = authenticate(request, username=username, password=password)
+    if user is not None:
+        token = Token.objects.get_or_create(user=user)
+        return JsonResponse({'token': token[0].key})
+    return JsonResponse({'invalid': 'error'})
+
+@csrf_exempt
 def loginUser(request):
+    if request.user.is_authenticated:
+        return JsonResponse({'stop it': 'you\'re already logged in'})
+
     username = request.POST.get('username')
     password = request.POST.get('password')
     
