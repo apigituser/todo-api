@@ -1,22 +1,14 @@
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.authtoken.models import Token
+from rest_framework.decorators import permission_classes, authentication_classes, api_view
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.authentication import TokenAuthentication
 from django.contrib.auth.models import User
 from django.http import JsonResponse
-import json
 
 @csrf_exempt
-def obtainToken(request):
-    username = request.POST.get('username')
-    password = request.POST.get('password')
-    
-    user = authenticate(request, username=username, password=password)
-    if user is not None:
-        token = Token.objects.get_or_create(user=user)
-        return JsonResponse({'token': token[0].key})
-    return JsonResponse({'invalid': 'error'})
-
-@csrf_exempt
+@api_view(['POST'])
 def loginUser(request):
     if request.user.is_authenticated:
         return JsonResponse({'stop it': 'you\'re already logged in'})
@@ -27,34 +19,24 @@ def loginUser(request):
     if username and password:
         user = authenticate(request, username=username, password=password)
         if user is not None:
-            login(request, user)
-            return JsonResponse({'success': f'{username} logged in'})
+            token = Token.objects.get(user=user)
+            return JsonResponse({'token': token.key})
         return JsonResponse({'401': 'invalid credentials'})
     return JsonResponse({'you idiot': 'provide a username and password'})
 
 @csrf_exempt
-def logoutUser(request):
-    if request.user.is_authenticated:
-        authenticated_user = str(request.user)
-        logout(request)
-        return JsonResponse({'200': f'{authenticated_user} logged out'})
-    return JsonResponse({'bish': 'you\'re anonymous'})
-
-@csrf_exempt
+@api_view(['POST'])
 def register(request):
-    body = request.body
-    user = None
-    try:
-        payload = json.loads(body)
-        user = User.objects.create_user(
-            payload['username'],
-            payload['email'],
-            payload['password']
-        )
-    except json.JSONDecodeError:
-        payload = "Invalid Json"
-    except Exception:
-        payload = "Internal Error"
-    if user:
-        return JsonResponse({'success': 'User created'})
-    return JsonResponse({'error': 'Failed to create user'})
+    username = request.POST.get('username')
+    password = request.POST.get('password')
+    email = request.POST.get('email')
+    
+
+    if username and password and email:
+        if User.objects.filter(username=username).exists():
+            return JsonResponse({'too bad': 'user already exists'})
+        user = User.objects.create_user(username, email, password)
+        if user:
+            token = Token.objects.get_or_create(user=user)
+            return JsonResponse({'token': token[0].key})
+    return JsonResponse({'not enough arguments': 'provide username password email'})
