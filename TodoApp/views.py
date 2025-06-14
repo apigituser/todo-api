@@ -8,6 +8,13 @@ from django.contrib.auth.models import User
 from django.http import JsonResponse
 
 @csrf_exempt
+@api_view(['GET'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def create_todo(request):
+    return JsonResponse({'create': 'todo list'})
+
+@csrf_exempt
 @api_view(['POST'])
 def loginUser(request):
     if request.user.is_authenticated:
