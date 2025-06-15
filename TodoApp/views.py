@@ -9,6 +9,27 @@ from django.http import JsonResponse
 from .models import Item
 
 @csrf_exempt
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+@authentication_classes([TokenAuthentication])
+def update_todo(request, id):
+    item_exists = Item.objects.filter(id=id).exists()
+    description = request.POST.get("description")
+    
+    if item_exists:
+        item = Item.objects.get(id=id)
+        item.description = description
+        item.save()
+        return JsonResponse(
+            {
+                "id": id,
+                "title": item.title,
+                "description": item.description
+            }
+        )
+    return JsonResponse({"you fcked up": "some error"})
+
+@csrf_exempt
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 @authentication_classes([TokenAuthentication])
