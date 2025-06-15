@@ -6,14 +6,32 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import TokenAuthentication
 from django.contrib.auth.models import User
 from django.http import JsonResponse
+from .models import Item
 
 @csrf_exempt
-@api_view(['GET'])
-@authentication_classes([TokenAuthentication])
+@api_view(['POST'])
 @permission_classes([IsAuthenticated])
+@authentication_classes([TokenAuthentication])
 def create_todo(request):
-    return JsonResponse({'create': 'todo list'})
+    ## [DONE] Job 1 -> Parse JSON data from the request & retrieve the fields
+    title = request.POST.get("title")
+    description = request.POST.get("description")
 
+    ## Job 2 -> Create Models to store TODO data
+    if title and description:
+        item = Item(title=title, description=description)
+        item.save()
+
+    ## Job 3 -> Send back a Response with information about TODO data created
+        return JsonResponse(
+            {
+                "id": item.id,
+                "title": item.title,
+                "description": item.description
+            }
+        )
+    return JsonResponse({'err': 'err'})
+    
 @csrf_exempt
 @api_view(['POST'])
 def loginUser(request):
