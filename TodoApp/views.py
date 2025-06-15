@@ -13,16 +13,12 @@ from .models import Item
 @permission_classes([IsAuthenticated])
 @authentication_classes([TokenAuthentication])
 def create_todo(request):
-    ## [DONE] Job 1 -> Parse JSON data from the request & retrieve the fields
     title = request.POST.get("title")
     description = request.POST.get("description")
 
-    ## Job 2 -> Create Models to store TODO data
     if title and description:
         item = Item(title=title, description=description)
         item.save()
-
-    ## Job 3 -> Send back a Response with information about TODO data created
         return JsonResponse(
             {
                 "id": item.id,
