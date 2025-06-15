@@ -9,25 +9,29 @@ from django.http import JsonResponse
 from .models import Item
 
 @csrf_exempt
-@api_view(['PATCH'])
+@api_view(['PATCH', 'DELETE'])
 @permission_classes([IsAuthenticated])
 @authentication_classes([TokenAuthentication])
-def update_todo(request, id):
+def update_and_delete_todo(request, id):
     item_exists = Item.objects.filter(id=id).exists()
-    description = request.POST.get("description")
-    
     if item_exists:
         item = Item.objects.get(id=id)
-        item.description = description
-        item.save()
-        return JsonResponse(
-            {
-                "id": id,
-                "title": item.title,
-                "description": item.description
-            }
-        )
-    return JsonResponse({"you fcked up": "some error"})
+
+        if request.method == "PATCH":
+            description = request.POST.get("description")
+            item.description = description
+            item.save()
+            return JsonResponse(
+                {
+                    "id": id,
+                    "title": item.title,
+                    "description": item.description
+                }
+            )
+        elif request.method == "DELETE":
+            item.delete()
+            return JsonResponse({'204': 'item deleted'})
+    return JsonResponse({"invalid id": "item doesn't exist"})
 
 @csrf_exempt
 @api_view(['POST'])
