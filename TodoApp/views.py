@@ -1,77 +1,88 @@
 from django.core.paginator import Paginator
 from django.contrib.auth import authenticate
+from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.authtoken.models import Token
-from rest_framework.decorators import permission_classes, authentication_classes, api_view
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.authentication import TokenAuthentication
+from rest_framework.decorators import permission_classes, api_view
 from django.contrib.auth.models import User
-from django.http import HttpResponse, JsonResponse
+from django.http import Http404, JsonResponse, HttpResponse, HttpResponseNotFound
 from .models import Item
 
 @csrf_exempt
-@api_view(['PATCH', 'DELETE'])
-@permission_classes([IsAuthenticated])
-@authentication_classes([TokenAuthentication])
-def update_and_delete_todo(request, id):
-    item_exists = Item.objects.filter(id=id).exists()
-    if item_exists:
-        item = Item.objects.get(id=id)
-
-        if request.method == "PATCH":
-            description = request.POST.get("description")
-            item.description = description
-            item.save()
-            return JsonResponse(
-                {
-                    "id": id,
-                    "title": item.title,
-                    "description": item.description
-                }
-            )
-        elif request.method == "DELETE":
-            item.delete()
-            return JsonResponse({'204': 'item deleted'})
-    return JsonResponse({"invalid id": "item doesn't exist"})
+def create_paginate_handle(request):
+    if request.method == "GET":
+        return get_todo(request)
+    elif request.method == "POST":
+        return create_todo(request)
 
 @csrf_exempt
-@api_view(['GET','POST'])
-@permission_classes([IsAuthenticated])
-@authentication_classes([TokenAuthentication])
-def create_paginate_todo(request):
-    if request.method == 'POST':
-        title = request.POST.get("title")
-        description = request.POST.get("description")
+def update_delete_handle(request, id):
+    if request.method == "PATCH":
+        return update_todo(request, id)
+    elif request.method == "DELETE":
+        return delete_todo(request, id)
 
-        if title and description:
-            item = Item(title=title, description=description)
-            item.save()
-            return JsonResponse(
-                {
-                    "id": item.id,
-                    "title": item.title,
-                    "description": item.description
-                }
-            )
-        return JsonResponse({'err': 'err'})
-    elif request.method == 'GET':
-        page = request.GET.get("page")
-        paginated_objects = Paginator(list(Item.objects.values()), 2)
+@csrf_exempt
+@api_view(['GET'])
+def get_todo(request):
+    page = int(request.GET.get("page") or 1)
+    limit = request.GET.get("limit") or 2
 
-        if page:
-            page = int(page)
-            if page <= paginated_objects.num_pages:
-                data = paginated_objects.get_page(page).object_list
-                return JsonResponse({
-                    "data": data,
-                    "page": page,
-                    "total": 2
-                })
-            return JsonResponse({'404': 'page range not valid'})
-        return JsonResponse({'bozo': 'no page parameter provided'})
+    paginated_objects = Paginator(list(Item.objects.values()), limit)
+
+    if page <= paginated_objects.num_pages:
+        data = paginated_objects.get_page(page).object_list
+        return JsonResponse({
+            "data": data,
+            "page": page,
+            "limit": int(limit),
+            "total": paginated_objects.count
+        })
+    return HttpResponse("page does not exist", status=404)
+
+@csrf_exempt
+@api_view(['POST'])
+def create_todo(request):
+    title = request.POST.get("title")
+    description = request.POST.get("description")
+
+    if title and description:
+        item = Item(title=title, description=description)
+        item.save()
+        return JsonResponse({
+            "id": item.id,
+            "title": item.title,
+            "description": item.description
+        })
+    return HttpResponse("title or description missing", status=400)
+
+@csrf_exempt
+@api_view(['DELETE'])
+def delete_todo(request, id):
+    item = get_object_or_404(Item, id=id)
+    item.delete()
+    return HttpResponse("item deleted successfully")
+
+@csrf_exempt
+@api_view(['PATCH'])
+def update_todo(request, id):
+    item = get_object_or_404(Item, id=id)
+    description = request.POST.get("description")
+    
+    if description:
+        item.description = description
+        item.save()
+        return JsonResponse({
+            "id": id,
+            "title": item.title,
+            "description": item.description
+        })
+    return HttpResponse("description not provided", status=400)
+
     
 @csrf_exempt
 @api_view(['POST'])
+@permission_classes([])
 def loginUser(request):
     if request.user.is_authenticated:
         return JsonResponse({'stop it': 'you\'re already logged in'})
@@ -89,6 +100,7 @@ def loginUser(request):
 
 @csrf_exempt
 @api_view(['POST'])
+@permission_classes([])
 def register(request):
     username = request.POST.get('username')
     password = request.POST.get('password')
