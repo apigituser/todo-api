@@ -1,3 +1,4 @@
+from django.core.paginator import Paginator
 from django.contrib.auth import authenticate
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.authtoken.models import Token
@@ -5,7 +6,7 @@ from rest_framework.decorators import permission_classes, authentication_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import TokenAuthentication
 from django.contrib.auth.models import User
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from .models import Item
 
 @csrf_exempt
@@ -34,24 +35,40 @@ def update_and_delete_todo(request, id):
     return JsonResponse({"invalid id": "item doesn't exist"})
 
 @csrf_exempt
-@api_view(['POST'])
+@api_view(['GET','POST'])
 @permission_classes([IsAuthenticated])
 @authentication_classes([TokenAuthentication])
-def create_todo(request):
-    title = request.POST.get("title")
-    description = request.POST.get("description")
+def create_paginate_todo(request):
+    if request.method == 'POST':
+        title = request.POST.get("title")
+        description = request.POST.get("description")
 
-    if title and description:
-        item = Item(title=title, description=description)
-        item.save()
-        return JsonResponse(
-            {
-                "id": item.id,
-                "title": item.title,
-                "description": item.description
-            }
-        )
-    return JsonResponse({'err': 'err'})
+        if title and description:
+            item = Item(title=title, description=description)
+            item.save()
+            return JsonResponse(
+                {
+                    "id": item.id,
+                    "title": item.title,
+                    "description": item.description
+                }
+            )
+        return JsonResponse({'err': 'err'})
+    elif request.method == 'GET':
+        page = request.GET.get("page")
+        paginated_objects = Paginator(list(Item.objects.values()), 2)
+
+        if page:
+            page = int(page)
+            if page <= paginated_objects.num_pages:
+                data = paginated_objects.get_page(page).object_list
+                return JsonResponse({
+                    "data": data,
+                    "page": page,
+                    "total": 2
+                })
+            return JsonResponse({'404': 'page range not valid'})
+        return JsonResponse({'bozo': 'no page parameter provided'})
     
 @csrf_exempt
 @api_view(['POST'])
