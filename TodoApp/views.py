@@ -5,24 +5,21 @@ from django.views.decorators.csrf import csrf_exempt
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import permission_classes, api_view
 from django.contrib.auth.models import User
-from django.http import Http404, JsonResponse, HttpResponse, HttpResponseNotFound
+from django.http import JsonResponse, HttpResponse
 from .models import Item
 
-@csrf_exempt
 def create_paginate_handle(request):
     if request.method == "GET":
         return get_todo(request)
     elif request.method == "POST":
         return create_todo(request)
 
-@csrf_exempt
 def update_delete_handle(request, id):
     if request.method == "PATCH":
         return update_todo(request, id)
     elif request.method == "DELETE":
         return delete_todo(request, id)
 
-@csrf_exempt
 @api_view(['GET'])
 def get_todo(request):
     page = int(request.GET.get("page") or 1)
@@ -56,14 +53,12 @@ def create_todo(request):
         })
     return HttpResponse("title or description missing", status=400)
 
-@csrf_exempt
 @api_view(['DELETE'])
 def delete_todo(request, id):
     item = get_object_or_404(Item, id=id)
     item.delete()
     return HttpResponse("item deleted successfully")
 
-@csrf_exempt
 @api_view(['PATCH'])
 def update_todo(request, id):
     item = get_object_or_404(Item, id=id)
@@ -80,7 +75,6 @@ def update_todo(request, id):
     return HttpResponse("description not provided", status=400)
 
     
-@csrf_exempt
 @api_view(['POST'])
 @permission_classes([])
 def loginUser(request):
@@ -98,7 +92,6 @@ def loginUser(request):
         return JsonResponse({'401': 'invalid credentials'})
     return JsonResponse({'you idiot': 'provide a username and password'})
 
-@csrf_exempt
 @api_view(['POST'])
 @permission_classes([])
 def register(request):
