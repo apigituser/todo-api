@@ -3,17 +3,20 @@ from django.contrib.auth import authenticate
 from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.authtoken.models import Token
-from rest_framework.decorators import permission_classes, api_view
+from rest_framework.decorators import permission_classes, api_view, throttle_classes
+from rest_framework.throttling import UserRateThrottle, AnonRateThrottle
 from django.contrib.auth.models import User
 from django.http import JsonResponse, HttpResponse
 from .models import Item
 
+@csrf_exempt
 def create_paginate_handle(request):
     if request.method == "GET":
         return get_todo(request)
     elif request.method == "POST":
         return create_todo(request)
 
+@csrf_exempt
 def update_delete_handle(request, id):
     if request.method == "PATCH":
         return update_todo(request, id)
@@ -21,6 +24,7 @@ def update_delete_handle(request, id):
         return delete_todo(request, id)
 
 @api_view(['GET'])
+@throttle_classes([UserRateThrottle])
 def get_todo(request):
     page = int(request.GET.get("page") or 1)
     limit = request.GET.get("limit") or 2
@@ -37,8 +41,8 @@ def get_todo(request):
         })
     return HttpResponse("page does not exist", status=404)
 
-@csrf_exempt
 @api_view(['POST'])
+@throttle_classes([UserRateThrottle])
 def create_todo(request):
     title = request.POST.get("title")
     description = request.POST.get("description")
@@ -54,12 +58,14 @@ def create_todo(request):
     return HttpResponse("title or description missing", status=400)
 
 @api_view(['DELETE'])
+@throttle_classes([UserRateThrottle])
 def delete_todo(request, id):
     item = get_object_or_404(Item, id=id)
     item.delete()
     return HttpResponse("item deleted successfully")
 
 @api_view(['PATCH'])
+@throttle_classes([UserRateThrottle])
 def update_todo(request, id):
     item = get_object_or_404(Item, id=id)
     description = request.POST.get("description")
@@ -76,6 +82,7 @@ def update_todo(request, id):
 
     
 @api_view(['POST'])
+@throttle_classes([AnonRateThrottle])
 @permission_classes([])
 def loginUser(request):
     if request.user.is_authenticated:
@@ -93,6 +100,7 @@ def loginUser(request):
     return JsonResponse({'you idiot': 'provide a username and password'})
 
 @api_view(['POST'])
+@throttle_classes([AnonRateThrottle])
 @permission_classes([])
 def register(request):
     username = request.POST.get('username')
