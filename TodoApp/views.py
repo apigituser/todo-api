@@ -6,7 +6,7 @@ from rest_framework.authtoken.models import Token
 from rest_framework.decorators import permission_classes, api_view, throttle_classes
 from rest_framework.throttling import UserRateThrottle, AnonRateThrottle
 from django.contrib.auth.models import User
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse
 from .models import Item
 
 @csrf_exempt
@@ -15,6 +15,8 @@ def create_paginate_handle(request):
         return get_todo(request)
     elif request.method == "POST":
         return create_todo(request)
+    else:
+        return JsonResponse({"Bad Request": "Invalid HTTP Method"}, status=400)
 
 @csrf_exempt
 def update_delete_handle(request, id):
@@ -22,6 +24,8 @@ def update_delete_handle(request, id):
         return update_todo(request, id)
     elif request.method == "DELETE":
         return delete_todo(request, id)
+    else:
+        return JsonResponse({"Bad Request": "Invalid HTTP Method"}, status=400)
 
 @api_view(['GET'])
 @throttle_classes([UserRateThrottle])
@@ -39,7 +43,7 @@ def get_todo(request):
             "limit": int(limit),
             "total": paginated_objects.count
         })
-    return HttpResponse("page does not exist", status=404)
+    return JsonResponse({"Bad Request": "Page does not exist"}, status=404)
 
 @api_view(['POST'])
 @throttle_classes([UserRateThrottle])
@@ -55,14 +59,14 @@ def create_todo(request):
             "title": item.title,
             "description": item.description
         })
-    return HttpResponse("title or description missing", status=400)
+    return JsonResponse({"Bad Request": "Title and Description required"}, status=400)
 
 @api_view(['DELETE'])
 @throttle_classes([UserRateThrottle])
 def delete_todo(request, id):
     item = get_object_or_404(Item, id=id)
     item.delete()
-    return HttpResponse("item deleted successfully")
+    return JsonResponse({"OK": f"Item (id:{id}) deleted successfully"})
 
 @api_view(['PATCH'])
 @throttle_classes([UserRateThrottle])
@@ -78,16 +82,12 @@ def update_todo(request, id):
             "title": item.title,
             "description": item.description
         })
-    return HttpResponse("description not provided", status=400)
-
+    return JsonResponse({"Bad Request": "Item Description required"}, status=400)
     
 @api_view(['POST'])
 @throttle_classes([AnonRateThrottle])
 @permission_classes([])
 def loginUser(request):
-    if request.user.is_authenticated:
-        return JsonResponse({'stop it': 'you\'re already logged in'})
-
     username = request.POST.get('username')
     password = request.POST.get('password')
     
@@ -96,8 +96,8 @@ def loginUser(request):
         if user is not None:
             token = Token.objects.get(user=user)
             return JsonResponse({'token': token.key})
-        return JsonResponse({'401': 'invalid credentials'})
-    return JsonResponse({'you idiot': 'provide a username and password'})
+        return JsonResponse({'Unauthorized': 'Invalid Credentials'}, status=401)
+    return JsonResponse({'Bad Request': 'Username and Password required'}, status=400)
 
 @api_view(['POST'])
 @throttle_classes([AnonRateThrottle])
@@ -106,13 +106,12 @@ def register(request):
     username = request.POST.get('username')
     password = request.POST.get('password')
     email = request.POST.get('email')
-    
 
     if username and password and email:
         if User.objects.filter(username=username).exists():
-            return JsonResponse({'too bad': 'user already exists'})
+            return JsonResponse({'Conflict': 'Username already exists'}, status=409)
         user = User.objects.create_user(username, email, password)
         if user:
             token = Token.objects.get_or_create(user=user)
             return JsonResponse({'token': token[0].key})
-    return JsonResponse({'not enough arguments': 'provide username password email'})
+    return JsonResponse({'Bad Request': 'Username Password and Email required'}, status=400)
