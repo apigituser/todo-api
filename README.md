@@ -33,5 +33,14 @@ python manage.py migrate
 python manage.py runserver
 ```
 
+## Recommended API software
+Install an API development software like Postman or Insomnia to interact with the API  
+
+## Using the Token
+Add the Token received in the Authorization header. For example  
+```
+Authorization: Token <token>
+```
+
 ## Roadmap.sh Project URL
 Project link is available [here](https://roadmap.sh/projects/todo-list-api)
