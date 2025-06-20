@@ -24,7 +24,11 @@ git clone https://github.com/apigituser/todo-api
 ```
 pip install -r requirements.txt
 ```
-3. Run the API
+3. Run migrations to create the tables
+```
+python manage.py migrate
+```
+4. Run the API
 ```
 python manage.py runserver
 ```
